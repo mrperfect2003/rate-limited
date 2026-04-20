@@ -1,7 +1,4 @@
 .env
-bin/
-tmp/
-vendor/
 *.exe
 *.out
 *go.mod

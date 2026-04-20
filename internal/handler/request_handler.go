@@ -22,8 +22,7 @@ func NewRequestHandler(rateLimiterService *service.RateLimiterService) *RequestH
 	}
 }
 
-// HandleRequest handles POST /request.
-// It validates input, checks per-user rate limit, and returns success/error response.
+// HandleRequest handles for requests to POST /request. It checks the rate limit and responds accordingly.
 func (h *RequestHandler) HandleRequest(c *fiber.Ctx) error {
 	var req model.RequestPayload
 
@@ -53,8 +52,7 @@ func (h *RequestHandler) HandleRequest(c *fiber.Ctx) error {
 	})
 }
 
-// GetStats handles GET /stats.
-// Supports optional pagination through query params: page and limit.
+// GetStats handles requests to GET /stats. It returns paginated stats about user requests.
 func (h *RequestHandler) GetStats(c *fiber.Ctx) error {
 	page := 1
 	limit := 10

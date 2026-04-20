@@ -13,29 +13,33 @@ import (
 )
 
 func main() {
-	// Load environment configuration.
+	// load config from .env (or system env if .env not present)
 	cfg := config.LoadConfig()
 
-	// Initialize in-memory store.
+	// in-memory store to keep request data (no DB as per assignment)
 	store := storage.NewMemoryStore()
 
-	// Initialize rate limiter service.
+	// rate limiter service handles core logic
 	rateLimiterService := service.NewRateLimiterService(
 		store,
 		cfg.RateLimitMaxRequests,
 		cfg.RateLimitWindowSec,
 	)
 
-	// Initialize handlers.
-	requestHandler := handler.NewRequestHandler(rateLimiterService)
+	// handler layer (API layer)
+	h := handler.NewRequestHandler(rateLimiterService)
 
-	// Create Fiber app.
+	// create fiber app
 	app := fiber.New()
 
-	// Register routes.
-	router.SetupRoutes(app, requestHandler)
+	// setup all routes
+	router.SetupRoutes(app, h)
 
-	// Start server.
-	log.Fatal(app.Listen(":" + cfg.Port))
+	// small log before starting server (helps during debugging)
 	log.Println("Server starting on port:", cfg.Port)
+
+	// start server (this blocks)
+	if err := app.Listen(":" + cfg.Port); err != nil {
+		log.Fatal("failed to start server:", err)
+	}
 }

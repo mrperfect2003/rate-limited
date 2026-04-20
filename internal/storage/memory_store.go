@@ -28,11 +28,7 @@ func NewMemoryStore() *MemoryStore {
 	}
 }
 
-// AllowRequest checks whether a user can make a request under the configured rate limit.
-// It also updates in-memory state if the request is allowed.
-//
-// maxRequests: allowed number of requests in the time window
-// window: duration for rate limit window, e.g. 1 minute
+// AllowRequest checks if a request from the given userID can be accepted based on the rate limit.
 func (s *MemoryStore) AllowRequest(userID string, maxRequests int, window time.Duration) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -62,8 +58,7 @@ func (s *MemoryStore) AllowRequest(userID string, maxRequests int, window time.D
 	return true
 }
 
-// GetStats returns all per-user accepted request counts sorted by user_id.
-// Sorting makes pagination stable and predictable.
+// GetStats returns a slice of UserStat containing total accepted request counts for all users.
 func (s *MemoryStore) GetStats() []model.UserStat {
 	s.mu.Lock()
 	defer s.mu.Unlock()
