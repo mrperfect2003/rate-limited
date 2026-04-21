@@ -10,19 +10,16 @@ import (
 	"rate-limited/internal/service"
 )
 
-// RequestHandler handles HTTP requests for the API.
 type RequestHandler struct {
 	rateLimiterService *service.RateLimiterService
 }
 
-// NewRequestHandler creates a new RequestHandler.
 func NewRequestHandler(rateLimiterService *service.RateLimiterService) *RequestHandler {
 	return &RequestHandler{
 		rateLimiterService: rateLimiterService,
 	}
 }
 
-// HandleRequest handles for requests to POST /request. It checks the rate limit and responds accordingly.
 func (h *RequestHandler) HandleRequest(c *fiber.Ctx) error {
 	var req model.RequestPayload
 
@@ -39,20 +36,30 @@ func (h *RequestHandler) HandleRequest(c *fiber.Ctx) error {
 		})
 	}
 
-	allowed := h.rateLimiterService.ProcessRequest(req.UserID)
-	if !allowed {
+	accepted, job, err := h.rateLimiterService.HandleIncomingRequest(req.UserID, req.Payload)
+	if err != nil {
 		return c.Status(fiber.StatusTooManyRequests).JSON(model.ErrorResponse{
-			Error: "rate limit exceeded: max 5 requests per user per minute",
+			Error: err.Error(),
 		})
 	}
 
-	return c.Status(fiber.StatusOK).JSON(model.RequestResponse{
-		Message: "request accepted",
-		UserID:  req.UserID,
+	if accepted {
+		return c.Status(fiber.StatusOK).JSON(fiber.Map{
+			"message": "request accepted",
+			"user_id": req.UserID,
+			"mode":    "direct",
+		})
+	}
+
+	return c.Status(fiber.StatusAccepted).JSON(fiber.Map{
+		"message": "rate limit exceeded, request queued for retry",
+		"user_id": req.UserID,
+		"mode":    "queued",
+		"job_id":  job.ID,
+		"status":  job.Status,
 	})
 }
 
-// GetStats handles requests to GET /stats. It returns paginated stats about user requests.
 func (h *RequestHandler) GetStats(c *fiber.Ctx) error {
 	page := 1
 	limit := 10
@@ -79,4 +86,33 @@ func (h *RequestHandler) GetStats(c *fiber.Ctx) error {
 
 	stats := h.rateLimiterService.GetStats(page, limit)
 	return c.Status(fiber.StatusOK).JSON(stats)
+}
+
+func (h *RequestHandler) GetJob(c *fiber.Ctx) error {
+	jobID := strings.TrimSpace(c.Params("id"))
+	if jobID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{
+			Error: "job id is required",
+		})
+	}
+
+	job, exists := h.rateLimiterService.GetJob(jobID)
+	if !exists {
+		return c.Status(fiber.StatusNotFound).JSON(model.ErrorResponse{
+			Error: "job not found",
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(job)
+}
+
+func (h *RequestHandler) GetQueueStats(c *fiber.Ctx) error {
+	stats := h.rateLimiterService.GetQueueStats()
+	return c.Status(fiber.StatusOK).JSON(stats)
+}
+
+func (h *RequestHandler) Health(c *fiber.Ctx) error {
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"message": "service is healthy",
+	})
 }

@@ -6,17 +6,16 @@ import (
 	"rate-limited/internal/handler"
 )
 
-// SetupRoutes sets up all API endpoints for the application
 func SetupRoutes(app *fiber.App, h *handler.RequestHandler) {
-
-	// Basic health check route
 	app.Get("/", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{
 			"message": "Rate-Limited API Service is running",
 		})
 	})
 
-	// Main APIs
+	app.Get("/health", h.Health)
 	app.Post("/request", h.HandleRequest)
 	app.Get("/stats", h.GetStats)
+	app.Get("/jobs/:id", h.GetJob)
+	app.Get("/queue/stats", h.GetQueueStats)
 }
